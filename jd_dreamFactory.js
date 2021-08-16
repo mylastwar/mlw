@@ -1,7 +1,7 @@
 /*
 京东京喜工厂
-更新时间：2021-6-25
-修复做任务、收集电力出现火爆，不能完成任务，重新计算h5st验证
+更新时间：2021-8-14
+修复开团、做任务、收集电力出现火爆，不能完成任务，重新计算h5st验证
 参考自 ：https://www.orzlee.com/web-development/2021/03/03/lxk0301-jingdong-signin-scriptjingxi-factory-solves-the-problem-of-unable-to-signin.html
 活动入口：京东APP-游戏与互动-查看更多-京喜工厂
 或者: 京东APP首页搜索 "玩一玩" ,造物工厂即可
@@ -42,11 +42,7 @@ const randomCount = $.isNode() ? 20 : 5;
 let tuanActiveId = ``, hasSend = false;
 const jxOpenUrl = `openjd://virtual?params=%7B%20%22category%22:%20%22jump%22,%20%22des%22:%20%22m%22,%20%22url%22:%20%22https://wqsd.jd.com/pingou/dream_factory/index.html%22%20%7D`;
 let cookiesArr = [], cookie = '', message = '', allMessage = '';
-const inviteCodes = [
-  'zqEhj70IMM_Qeg8EeybM6g==',
-  'NQ86ppzC3eeOCQmoSIhQnA==',
-  'lgX5tljxQsNZaunsVOZYpw=='
-];
+const inviteCodes = ['zqEhj70IMM_Qeg8EeybM6g==@NQ86ppzC3eeOCQmoSIhQnA==@gI1PTplDcSammq6QHYq4wYUSEeccLu5l3hjAwf0ddtc=@gI1PTplDcSammq6QHYq4wYUSEeccLu5l3hjAwf0ddtc='];
 const jdCookieNode = $.isNode() ? require('./jdCookie.js') : '';
 $.tuanIds = [];
 $.appId = 10001;
@@ -174,11 +170,16 @@ function getActiveId(url = 'https://wqsd.jd.com/pingou/dream_factory/index.html'
                 const start = item.start;
                 const end = item.end;
                 const link = item.link;
-                if (new Date(item.end).getTime() > Date.now()) {
+                if ((new Date(item.start).getTime() <= Date.now()) && (new Date(item.end).getTime() > Date.now())) {
                   if (link && link.match(/activeId=(.*),/) && link.match(/activeId=(.*),/)[1]) {
                     console.log(`\n团活动ID: ${link.match(/activeId=(.*),/)[1]}\n有效时间：${start} - ${end}`);
                     tuanActiveId = link.match(/activeId=(.*),/)[1];
                     break
+                  }
+                } else if ((new Date(item.start).getTime() > Date.now()) && (new Date(item.end).getTime() > Date.now())) {
+                  if (link && link.match(/activeId=(.*),/) && link.match(/activeId=(.*),/)[1]) {
+                    console.log(`\n团活动ID: ${link.match(/activeId=(.*),/)[1]}\n有效时间：${start} - ${end}\n团ID还未开始`);
+                    tuanActiveId = '';
                   }
                 } else {
                   if (link && link.match(/activeId=(.*),/) && link.match(/activeId=(.*),/)[1]) {
@@ -1019,7 +1020,11 @@ async function tuanActivity() {
 }
 async function joinLeaderTuan() {
   let res = await updateTuanIdsCDN('https://raw.githubusercontent.com/Aaron-lv/updateTeam/master/shareCodes/jd_updateFactoryTuanId.json')
-  if (!res) res = await updateTuanIdsCDN('https://cdn.jsdelivr.net/gh/Aaron-lv/updateTeam@master/shareCodes/jd_updateFactoryTuanId.json')
+  if (!res) {
+    $.http.get({url: 'https://purge.jsdelivr.net/gh/Aaron-lv/updateTeam@master/shareCodes/jd_updateFactoryTuanId.json'}).then((resp) => {}).catch((e) => $.log('刷新CDN异常', e));
+    await $.wait(1000)
+    res = await updateTuanIdsCDN('https://cdn.jsdelivr.net/gh/Aaron-lv/updateTeam@master/shareCodes/jd_updateFactoryTuanId.json');
+  }
   $.authorTuanIds = [...(res && res.tuanIds || [])]
   if ($.authorTuanIds && $.authorTuanIds.length) {
     for (let tuanId of $.authorTuanIds) {

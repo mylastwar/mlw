@@ -36,13 +36,14 @@ $.showLog = $.getdata("cfd_showLog") ? $.getdata("cfd_showLog") === "true" : fal
 $.notifyTime = $.getdata("cfd_notifyTime");
 $.result = [];
 $.shareCodes = [
-'9391CAE9CD8091504B59240D519B542625FB2481DF271D390371317E6EF2E212',
-'7ECAB4F0C991B350AA18128A376F505769C3B63CB777A528A64436F22F962CB7',
-'B12CC135BC03142AB20C67C3F4FD510D24B2941EDFF7103EBA5D2C5687A84B53',
-'2909ADB5DE69C81226DFE1AF4816688BD28B25620A94E36DF1AD8BE62E79AD91',
-'2909ADB5DE69C81226DFE1AF4816688BD08EAD2AB1303876C626DFF4261BAA7D'
+'BFDEED441F9430FAB74B1AFC088C913227E0B5DC171E47CD1FEEFEE94318DD73',
+'7ECAB4F0C991B350AA18128A376F505753BEE8A47353CE0562EB5B877D508DB5',
+'D2D0ABB26E4BA7706898822B5C6AB50F935F4BBA9DBCDE58AB553290DD391C8B',
+'83B35E0607B9D729A4A034D64133E06176E3D7892011D79472E1B277CA4042C7'
 ];
 let cookiesArr = [], cookie = '', token = '';
+let UA, UAInfo = {}
+let nowTimes;
 
 const randomCount = $.isNode() ? 3 : 3;
 if ($.isNode()) {
@@ -90,23 +91,26 @@ $.appId = 10028;
       }
       $.allTask = []
       $.info = {}
+      UA = `jdpingou;iPhone;4.13.0;14.4.2;${randomString(40)};network/wifi;model/iPhone10,2;appBuild/100609;ADID/00000000-0000-0000-0000-000000000000;supportApplePay/1;hasUPPay/0;pushNoticeIsOpen/1;hasOCPay/0;supportBestPay/0;session/${Math.random * 98 + 1};pap/JA2019_3111789;brand/apple;supportJDSHWK/1;Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148`
       token = await getJxToken()
       await shareCodesFormat()
       await cfd();
       await $.wait(2000);
+      UAInfo[$.UserName] = UA
     }
   }
   for (let j = 0; j < cookiesArr.length; j++) {
     cookie = cookiesArr[j];
     $.UserName = decodeURIComponent(cookie.match(/pt_pin=([^; ]+)(?=;?)/) && cookie.match(/pt_pin=([^; ]+)(?=;?)/)[1])
     $.canHelp = true
+    UA = UAInfo[$.UserName]
     if ($.shareCodes && $.shareCodes.length) {
       console.log(`\n自己账号内部循环互助\n`);
       for (let id of $.shareCodes) {
         console.log(`账号${$.UserName} 去助力 ${id}`)
         await helpByStage(id)
-        if (!$.canHelp) break
         await $.wait(3000)
+        if (!$.canHelp) break
       }
     }
     if (!$.canHelp) continue
@@ -115,8 +119,8 @@ $.appId = 10028;
       for (let id of $.strMyShareIds) {
         console.log(`账号${$.UserName} 去助力 ${id}`)
         await helpByStage(id)
-        if (!$.canHelp) break
         await $.wait(3000)
+        if (!$.canHelp) break
       }
     }
   }
@@ -127,13 +131,14 @@ $.appId = 10028;
 
 async function cfd() {
   try {
+    nowTimes = new Date(new Date().getTime() + new Date().getTimezoneOffset() * 60 * 1000 + 8 * 60 * 60 * 1000)
     let beginInfo = await getUserInfo();
-    if (beginInfo.Fund.ddwFundTargTm === 0) {
+    if (beginInfo.LeadInfo.dwLeadType === 2) {
       console.log(`还未开通活动，尝试初始化`)
       await noviceTask()
       await $.wait(2000)
       beginInfo = await getUserInfo(false);
-      if (beginInfo.Fund.ddwFundTargTm !== 0) {
+      if (beginInfo.LeadInfo.dwLeadType !== 2) {
         console.log(`初始化成功\n`)
       } else {
         console.log(`初始化失败\n`)
@@ -144,6 +149,10 @@ async function cfd() {
     //每日签到
     await $.wait(2000)
     await getTakeAggrPage('sign')
+
+    //小程序每日签到
+    await $.wait(2000)
+    await getTakeAggrPage('wxsign')
 
     //助力奖励
     await $.wait(2000)
@@ -164,8 +173,10 @@ async function cfd() {
     }
 
     //合成珍珠
-    await $.wait(2000)
-    await composeGameState()
+    if (nowTimes.getHours() >= 5) {
+      await $.wait(2000)
+      await composeGameState()
+    }
 
     //接待贵宾
     console.log(`接待贵宾`)
@@ -593,6 +604,36 @@ async function getTakeAggrPage(type) {
           }
         })
         break
+      case 'wxsign':
+        $.get(taskUrl(`story/GetTakeAggrPage`, '', 6), async (err, resp, data) => {
+          try {
+            if (err) {
+              console.log(`${JSON.stringify(err)}`)
+              console.log(`${$.name} GetTakeAggrPage API请求失败，请检查网路重试`)
+            } else {
+              data = JSON.parse(data);
+              console.log(`小程序每日签到`)
+              for (let key of Object.keys(data.Data.Sign.SignList)) {
+                let vo = data.Data.Sign.SignList[key]
+                if (vo.dwDayId === data.Data.Sign.dwTodayId) {
+                  if (vo.dwStatus !== 1) {
+                    const body = `ddwCoin=${vo.ddwCoin}&ddwMoney=${vo.ddwMoney}&dwPrizeType=${vo.dwPrizeType}&strPrizePool=${vo.strPrizePool}&dwPrizeLv=${vo.dwBingoLevel}`
+                    await rewardSign(body, 6)
+                    await $.wait(2000)
+                  } else {
+                    console.log(`今日已签到\n`)
+                    break
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            $.logErr(e, resp);
+          } finally {
+            resolve();
+          }
+        })
+        break
       case 'helpdraw':
         $.get(taskUrl(`story/GetTakeAggrPage`), async (err, resp, data) => {
           try {
@@ -630,9 +671,9 @@ async function getTakeAggrPage(type) {
     }
   })
 }
-function rewardSign(body) {
+function rewardSign(body, dwEnv = 7) {
   return new Promise((resolve) => {
-    $.get(taskUrl(`story/RewardSign`, body), (err, resp, data) => {
+    $.get(taskUrl(`story/RewardSign`, body, dwEnv), (err, resp, data) => {
       try {
         if (err) {
           console.log(`${JSON.stringify(err)}`)
@@ -1181,7 +1222,7 @@ function getUserInfo(showInvite = true) {
             sErrMsg,
             strMyShareId,
             dwLandLvl,
-            Fund = {},
+            LeadInfo = {},
             StoryInfo = {},
             Business = {}
           } = data;
@@ -1201,7 +1242,7 @@ function getUserInfo(showInvite = true) {
             ddwCoinBalance,
             strMyShareId,
             dwLandLvl,
-            Fund,
+            LeadInfo,
             StoryInfo
           };
           resolve({
@@ -1209,7 +1250,7 @@ function getUserInfo(showInvite = true) {
             ddwRichBalance,
             ddwCoinBalance,
             strMyShareId,
-            Fund,
+            LeadInfo,
             StoryInfo
           });
         }
@@ -1463,7 +1504,7 @@ function biz(contents){
         Referer: "https://st.jingxi.com/fortune_island/index.html?ptag=138631.26.55",
         "Accept-Encoding": "gzip, deflate, br",
         Host: 'm.jingxi.com',
-        "User-Agent": `jdpingou;iPhone;3.15.2;14.2.1;ea00763447803eb0f32045dcba629c248ea53bb3;network/wifi;model/iPhone13,2;appBuild/100365;ADID/00000000-0000-0000-0000-000000000000;supportApplePay/1;hasUPPay/0;pushNoticeIsOpen/0;hasOCPay/0;supportBestPay/0;session/${Math.random * 98 + 1};pap/JA2015_311210;brand/apple;supportJDSHWK/1;Mozilla/5.0 (iPhone; CPU iPhone OS 14_2_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148`,
+        "User-Agent": UA,
         "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
       }
     }
@@ -1481,8 +1522,8 @@ function biz(contents){
   })
 }
 
-function taskUrl(function_path, body = '') {
-  let url = `${JD_API_HOST}jxbfd/${function_path}?strZone=jxbfd&bizCode=jxbfd&source=jxbfd&dwEnv=7&_cfd_t=${Date.now()}&ptag=138631.26.55&${body}&_stk=_cfd_t%2CbizCode%2CddwTaskId%2CdwEnv%2Cptag%2Csource%2CstrShareId%2CstrZone&_ste=1`;
+function taskUrl(function_path, body = '', dwEnv = 7) {
+  let url = `${JD_API_HOST}jxbfd/${function_path}?strZone=jxbfd&bizCode=jxbfd&source=jxbfd&dwEnv=${dwEnv}&_cfd_t=${Date.now()}&ptag=138631.26.55&${body}&_stk=_cfd_t%2CbizCode%2CddwTaskId%2CdwEnv%2Cptag%2Csource%2CstrShareId%2CstrZone&_ste=1`;
   url += `&h5st=${decrypt(Date.now(), '', '', url)}&_=${Date.now() + 2}&sceneval=2&g_login_type=1&g_ty=ls`;
   return {
     url,
@@ -1493,7 +1534,7 @@ function taskUrl(function_path, body = '') {
       Referer:"https://st.jingxi.com/fortune_island/index.html?ptag=138631.26.55",
       "Accept-Encoding": "gzip, deflate, br",
       Host: "m.jingxi.com",
-      "User-Agent":`jdpingou;iPhone;3.15.2;14.2.1;ea00763447803eb0f32045dcba629c248ea53bb3;network/wifi;model/iPhone13,2;appBuild/100365;ADID/00000000-0000-0000-0000-000000000000;supportApplePay/1;hasUPPay/0;pushNoticeIsOpen/0;hasOCPay/0;supportBestPay/0;session/${Math.random * 98 + 1};pap/JA2015_311210;brand/apple;supportJDSHWK/1;Mozilla/5.0 (iPhone; CPU iPhone OS 14_2_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148`,
+      "User-Agent": UA,
       "Accept-Language": "zh-cn",
     },
     timeout: 10000
@@ -1512,11 +1553,19 @@ function taskListUrl(function_path, body = '', bizCode = 'jxbfd') {
       Referer:"https://st.jingxi.com/fortune_island/index.html?ptag=138631.26.55",
       "Accept-Encoding": "gzip, deflate, br",
       Host: "m.jingxi.com",
-      "User-Agent":`jdpingou;iPhone;3.15.2;14.2.1;ea00763447803eb0f32045dcba629c248ea53bb3;network/wifi;model/iPhone13,2;appBuild/100365;ADID/00000000-0000-0000-0000-000000000000;supportApplePay/1;hasUPPay/0;pushNoticeIsOpen/0;hasOCPay/0;supportBestPay/0;session/${Math.random * 98 + 1};pap/JA2015_311210;brand/apple;supportJDSHWK/1;Mozilla/5.0 (iPhone; CPU iPhone OS 14_2_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148`,
+      "User-Agent": UA,
       "Accept-Language": "zh-cn",
     },
     timeout: 10000
   };
+}
+
+function randomString(e) {
+  e = e || 32;
+  let t = "0123456789abcdef", a = t.length, n = "";
+  for (let i = 0; i < e; i++)
+    n += t.charAt(Math.floor(Math.random() * a));
+  return n
 }
 
 function showMsg() {
@@ -1618,9 +1667,9 @@ function requireConfig() {
 function TotalBean() {
   return new Promise(async resolve => {
     const options = {
-      url: "https://wq.jd.com/user_new/info/GetJDUserInfoUnion?sceneval=2",
+      url: "https://me-api.jd.com/user_new/info/GetJDUserInfoUnion",
       headers: {
-        Host: "wq.jd.com",
+        Host: "me-api.jd.com",
         Accept: "*/*",
         Connection: "keep-alive",
         Cookie: cookie,
@@ -1637,11 +1686,11 @@ function TotalBean() {
         } else {
           if (data) {
             data = JSON.parse(data);
-            if (data['retcode'] === 1001) {
+            if (data['retcode'] === "1001") {
               $.isLogin = false; //cookie过期
               return;
             }
-            if (data['retcode'] === 0 && data.data && data.data.hasOwnProperty("userInfo")) {
+            if (data['retcode'] === "0" && data.data && data.data.hasOwnProperty("userInfo")) {
               $.nickName = data.data.userInfo.baseInfo.nickname;
             }
           } else {

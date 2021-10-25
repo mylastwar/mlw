@@ -1,7 +1,7 @@
 /*
 活动入口：首页 -> 领券 -> 集卡赢大奖
  */
-const $ = new Env('集萌宝得团圆礼包');
+const $ = new Env('集魔力卡召唤大奖');
 const notify = $.isNode() ? require('./sendNotify') : '';
 //Node.js用户请在jdCookie.js处填写京东ck;
 const jdCookieNode = $.isNode() ? require('./jdCookie.js') : '';
@@ -17,7 +17,7 @@ if ($.isNode()) {
 } else {
     cookiesArr = [$.getdata('CookieJD'), $.getdata('CookieJD2'), ...jsonParse($.getdata('CookiesJD') || "[]").map(item => item.cookie)].filter(item => !!item);
 }
-$.activityKey = '66f241a0515adf04b2ecb500827b119d';
+$.activityKey = '53275a405ec3cba14b28662e05f6c53b';
 const JD_API_HOST = 'https://api.m.jd.com/api';
 !(async () => {
     if (!cookiesArr[0]) {
@@ -65,7 +65,7 @@ const JD_API_HOST = 'https://api.m.jd.com/api';
             await $.wait(3000);
         }
     }
-    $.authorCode = [5892462,5885679,5901328];
+    $.authorCode = [6249088,6251098];
     if ($.authorCode && $.authorCode.length) {
         for (let i = 0; i < cookiesArr.length; i++) {
             cookie = cookiesArr[i];
@@ -318,7 +318,7 @@ function taskPostUrl(functionId, body) {
             "Connection": "keep-alive",
             "Content-Type": "application/x-www-form-urlencoded",
             "Host": "api.m.jd.com",
-            "Referer": "https://h5.m.jd.com/babelDiy/Zeus/3Ck6vd8Tz4sJFme5keU9KifFM3aW/index.html?babelChannel=ttt5&activityKey=66f241a0515adf04b2ecb500827b119d",
+            "Referer": "https://h5.m.jd.com/babelDiy/Zeus/3Ck6vd8Tz4sJFme5keU9KifFM3aW/index.html?groupId=6265016&activityKey=53275a405ec3cba14b28662e05f6c53b",
             "Cookie": cookie,
             "User-Agent": $.isNode() ? (process.env.JD_USER_AGENT ? process.env.JD_USER_AGENT : (require('./USER_AGENTS').USER_AGENT)) : ($.getdata('JDUA') ? $.getdata('JDUA') : "jdapp;iPhone;9.2.2;14.2;%E4%BA%AC%E4%B8%9C/9.2.2 CFNetwork/1206 Darwin/20.1.0"),
         }
